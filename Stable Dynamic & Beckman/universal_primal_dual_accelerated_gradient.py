@@ -12,9 +12,9 @@ import numpy as np
 
 
 def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, primal_dual_oracle,
-                                         t_start, L_init = None, max_iter = 1000,
+                                         lambda_start, L_init = None, max_iter = 1000,
                                          crit_name = 'dual_gap_rel', eps = 1e-5, eps_abs = None, 
-                                         verbose = False):
+                                         verbose = False, gamma = 1.0, H = 100, total_od_flow=1e5):
     if crit_name == 'dual_gap_rel':
         def crit():
             nonlocal duality_gap, duality_gap_init, eps
@@ -31,14 +31,8 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
             l = len(primal_func_history)
             return primal_func_history[l // 2] - primal_func_history[-1] \
                    < eps * (primal_func_history[0] - primal_func_history[-1])
-    
-    
+
     iter_step = 100
-    if L_init is not None:
-        L_value = L_init
-    else:
-        L_value = np.linalg.norm(phi_big_oracle.grad(t_start))
-    
     A_prev = 0.0
     y_start = u_prev = t_prev = np.copy(t_start)
     A = u = t = y = None
@@ -61,6 +55,7 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
     # //////////////////////////////////////
 
     def binary_search(f, a, b, epsilon, **kwargs):
+        # TO DO
         phi = kwargs.get('phi')
         if phi is not None:
             grad_phi = phi.grad
@@ -103,6 +98,12 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
         roots = solve_quadratic_equation(ax, bx, cx)
         return roots[0]
 
+    def M(delta, nu, m_nu):
+        return ((1-nu) / (1+nu) * m_nu / delta) ** ((1-nu) / (1+nu)) * m_nu
+
+    M0 = 2 * np.sqrt(H) * total_od_flow
+    M1 = H * total_od_flow / gamma
+
     a_prev = 0
     A_prev = a_prev
 
@@ -113,12 +114,22 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
         beta = binary_search(f, 0, 1, **bin_search_kws)
         lambda_prev = zeta_prev + beta * (eta_prev - zeta_prev)
         grad_phi = phi_big_oracle.grad(lambda_prev)
+        grad_sum_next = grad_sum_prev + a_prev * grad_phi
 
-        h_next = 0 # prox_find(phi_big_oracle, ...)
-        eta_next = lambda_prev - h_next  * grad_phi
+        h_next = 1 / min(
+            M(a_prev / A_prev * eps, 0, M0),
+            M(a_prev / A_prev * eps, 1, M1)
+        )
+        eta_next = prox_h(lambda_prev - h_next * grad_phi, h_next, lambda_prev)
         a_next = get_a_next(phi_big_oracle, grad_phi, eta_next, lambda_prev, A_prev, eps)
         A_next = A_prev + a_next
-        zeta_next = zeta_prev - a_next * grad_phi
+        zeta_next = prox_h(zeta_prev - a_next * grad_phi, a_next, zeta_prev)
+        x_next = -grad_sum_next / A_next
+
+        zeta_prev = zeta_next
+        a_prev = a_next
+        A_prev = A_next
+
 
 
     # /////////////////////////////////////
