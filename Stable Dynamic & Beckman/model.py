@@ -11,6 +11,8 @@ import universal_gradient_descent as ugd
 
 import frank_wolfe_algorithm as fwa
 
+import universal_primal_dual_accelerated_gradient as updag
+
 
 class Model:
     def __init__(self, graph_data, graph_correspondences, total_od_flow, mu = 0.25, rho = 0.15):
@@ -37,10 +39,14 @@ class Model:
         elif solver_name == 'sd':
             solver_func = ugd.universal_gradient_descent_function
             starting_msg = 'Subgradient descent...'
+        elif solver_name == 'updag':
+            solver_func = updag.universal_primal_dual_accelerated_gradient_function
+            solver_kwargs['total_od_flow'] = self.total_od_flow
+            starting_msg = 'Universal primal dual accelerated gradient descent...'
         else:
             raise NotImplementedError('Unknown solver!')
 
-        if solver_name in ['ugd', 'ustf', 'sd']:
+        if solver_name in ['ugd', 'ustf', 'sd', 'updag']:
             prox_h = ProxH(self.graph.freeflow_times, self.graph.capacities, mu = self.mu, rho = self.rho)
 
 
@@ -61,6 +67,7 @@ class Model:
             result = solver_func(phi_big_oracle, prox_h,
                                  primal_dual_calculator, 
                                  t_start = self.graph.freeflow_times,
-                                 verbose = verbose, **solver_kwargs)
+                                 verbose = verbose,
+                                 **solver_kwargs)
 
         return result
