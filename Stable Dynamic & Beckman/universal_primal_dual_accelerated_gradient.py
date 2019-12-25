@@ -14,7 +14,7 @@ import numpy as np
 def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, primal_dual_oracle,
                                          lambda_start, L_init = None, max_iter = 1000,
                                          crit_name = 'dual_gap_rel', eps = 1e-5, eps_abs = None, 
-                                         verbose = False, gamma = 1.0, H = 100, total_od_flow=1e5):
+                                         verbose = False, H = 100, total_od_flow=1e5):
     if crit_name == 'dual_gap_rel':
         def crit():
             nonlocal duality_gap, duality_gap_init, eps
@@ -102,7 +102,8 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
         return ((1-nu) / (1+nu) * m_nu / delta) ** ((1-nu) / (1+nu)) * m_nu
 
     M0 = 2 * np.sqrt(H) * total_od_flow
-    M1 = H * total_od_flow / gamma
+    #we don't need M1
+    #M1 = H * total_od_flow / gamma
 
     a_prev = 0
     A_prev = a_prev
@@ -116,10 +117,7 @@ def universal_primal_dual_accelerated_gradient_function(phi_big_oracle, prox_h, 
         grad_phi = phi_big_oracle.grad(lambda_prev)
         grad_sum_next = grad_sum_prev + a_prev * grad_phi
 
-        h_next = 1 / min(
-            M(a_prev / A_prev * eps, 0, M0),
-            M(a_prev / A_prev * eps, 1, M1)
-        )
+        h_next = 1 / M(a_prev / A_prev * eps, 0, M0)
         eta_next = prox_h(lambda_prev - h_next * grad_phi, h_next, lambda_prev)
         a_next = get_a_next(phi_big_oracle, grad_phi, eta_next, lambda_prev, A_prev, eps)
         A_next = A_prev + a_next
