@@ -129,11 +129,11 @@ def universal_primal_dual_accelerated_gradient_function(
         grad_sum_next = grad_sum_prev + a_prev * grad_phi
 
         eps_arg = 1 if it_counter == 0 else a_prev / A_prev
-        h = 1e-4# 1 / M(eps_arg * eps, 0, M0)
-        eta_next = prox_h(lambda_ - h * grad_phi, 1/h, lambda_)
+        h = 1e-6# 1 / M(eps_arg * eps, 0, M0)
+        eta_next = prox_h(lambda_ - h * grad_phi, h, lambda_)
         a_next = get_a_next(phi_big_oracle, grad_phi, eta_next, lambda_, A_prev, eps)
         A_next = A_prev + a_next
-        zeta_next = prox_h(zeta_prev - a_next * grad_phi, 1/a_next, zeta_prev)
+        zeta_next = prox_h(zeta_prev - a_next * grad_phi, a_next, zeta_prev)
         x = -grad_sum_next / A_next
         # print(h)
 
@@ -172,9 +172,9 @@ def universal_primal_dual_accelerated_gradient_function(
                 print('Duality_gap / Duality_gap_init = {:g}'.format(duality_gap / duality_gap_init),
                       flush=True)
 
-            if duality_gap < eps_abs:
-               success = True
-               break
+#             if duality_gap < eps_abs:
+#                success = True
+#                break
 
     result = {'times': eta_next,
               'flows': x,
